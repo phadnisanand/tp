@@ -1,0 +1,34 @@
+<?php
+
+/**
+ * @file
+ * Contains my_layout_tweaks.module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_form_alter().
+ */
+function my_layout_tweaks_form_alter(&$form, FormStateInterface $form_state, $form_id) {  //die('coming');
+  // Target the Layout Builder form.
+  // Use str_contains() for a broad match. You might need to adjust this check
+  // based on the exact form ID on your Drupal instance (e.g., if it's
+  // node_article_layout_form, etc.).
+  if (str_contains($form_id, 'layout_builder_form')) { //die('comin11g');
+    // Attach your custom JavaScript library.
+    $form['#attached']['library'][] = 'my_layout_tweaks/layout_builder_tweaks';
+
+    // Set the PHP default value for the checkbox.
+    // This provides a fallback and sets the initial state on render.
+    // The exact path to 'show_content_preview' can vary; inspect your form.
+    if (isset($form['settings']['show_content_preview'])) {
+      $form['settings']['show_content_preview']['#default_value'] = FALSE;
+    }
+    elseif (isset($form['show_content_preview'])) { // Less common but possible directly at top level
+      $form['show_content_preview']['#default_value'] = FALSE;
+    }
+    // Add more elseif conditions here if you find it nested differently
+    // using kint($form) or browser inspector.
+  }
+}

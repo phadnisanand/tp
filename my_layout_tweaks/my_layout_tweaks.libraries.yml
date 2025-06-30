@@ -1,0 +1,9 @@
+layout_builder_tweaks:
+  version: 1.x
+  js:
+    js/layout-builder-tweaks.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupal.ajax
+    - core/once # Explicitly add jquery.once for clarity, though core/jquery might include it.

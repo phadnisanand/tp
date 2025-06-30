@@ -1,0 +1,5 @@
+name: 'My Layout Tweaks'
+type: module
+description: 'Custom tweaks for Layout Builder, including setting "Show content preview" off by default.'
+core_version_requirement: '^9 || ^10'
+package: 'Custom'
