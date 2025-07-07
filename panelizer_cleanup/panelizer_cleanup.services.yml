@@ -1,0 +1,5 @@
+services:
+  panelizer_cleanup.commands:
+    class: \Drupal\panelizer_cleanup\Commands\PanelizerCleanupCommands
+    tags:
+      - { name: drush.command }

@@ -1,0 +1,7 @@
+name: 'Panelizer Cleanup'
+type: module
+description: 'Cleans up broken block_content references in Panelizer layouts.'
+core_version_requirement: ^9 || ^10
+package: Custom
+dependencies:
+  - panelizer
