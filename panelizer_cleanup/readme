@@ -1,0 +1,3 @@
+drush panelizer:cleanup-broken-blocks field_custom_panelizer
+
+drush panelizer:cleanup-broken-blocks
