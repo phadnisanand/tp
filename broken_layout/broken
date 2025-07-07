@@ -1,0 +1,52 @@
+use Drupal\node\Entity\Node;
+use Drupal\block_content\Entity\BlockContent;
+
+/**
+ * Cleans up broken block references in Panelizer layouts.
+ */
+function cleanup_panelizer_broken_blocks($panelizer_field_name = 'field_panelizer') {
+  $node_storage = \Drupal::entityTypeManager()->getStorage('node');
+  $nids = $node_storage->getQuery()->accessCheck(FALSE)->execute();
+
+  foreach ($nids as $nid) {
+    $revisions = $node_storage->revisionIds(Node::load($nid));
+    foreach ($revisions as $vid) {
+      $node = $node_storage->loadRevision($vid);
+      if (!$node || !$node->hasField($panelizer_field_name)) {
+        continue;
+      }
+
+      $panelizer_data = $node->get($panelizer_field_name)->getValue();
+      if (empty($panelizer_data[0]['value'])) {
+        continue;
+      }
+
+      $layout = unserialize($panelizer_data[0]['value']);
+      $modified = FALSE;
+
+      foreach ($layout as &$section) {
+        if (!isset($section['components'])) {
+          continue;
+        }
+
+        foreach ($section['components'] as $key => $component) {
+          if (isset($component['configuration']['block_uuid'])) {
+            $uuid = $component['configuration']['block_uuid'];
+            $block = \Drupal::entityTypeManager()->getStorage('block_content')->loadByProperties(['uuid' => $uuid]);
+            if (empty($block)) {
+              echo "❌ Missing block UUID $uuid in Node $nid, Revision $vid. Removing component...\n";
+              unset($section['components'][$key]);
+              $modified = TRUE;
+            }
+          }
+        }
+      }
+
+      if ($modified) {
+        $node->set($panelizer_field_name, serialize($layout));
+        $node->save();
+        echo "✅ Cleaned Node $nid, Revision $vid\n";
+      }
+    }
+  }
+}
