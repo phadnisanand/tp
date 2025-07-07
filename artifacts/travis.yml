@@ -1,0 +1,17 @@
+language: php
+php:
+  - "8.1"
+
+branches:
+  only:
+    - main
+
+install:
+  - composer install --no-dev
+
+script:
+  - echo "Run tests or build steps here"
+  - ./scripts/deploy_to_acquia.sh
+
+after_success:
+  - ./scripts/push_artifacts_to_branch.sh

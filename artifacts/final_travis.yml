@@ -1,0 +1,37 @@
+language: php
+php:
+  - "8.1"
+
+# Define stages
+stages:
+  - name: build
+  - name: deploy
+    if: tag IS present
+
+# Only build on main branch and version tags
+branches:
+  only:
+    - main
+
+# Optional: restrict tag pattern (e.g., v1.0.0)
+tags:
+  only:
+    - /^v\d+\.\d+\.\d+$/
+
+# Define jobs
+jobs:
+  include:
+    - stage: build
+      if: branch = main AND tag IS blank
+      script:
+        - echo "Running build for main branch"
+        - composer install --no-dev
+        - ./scripts/run-tests.sh
+
+    - stage: deploy
+      if: tag IS present
+      script:
+        - echo "Running deployment for tag $TRAVIS_TAG"
+        - composer install --no-dev
+        - ./scripts/deploy_to_acquia.sh
+        - ./scripts/push_artifacts_to_branch.sh

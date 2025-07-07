@@ -1,0 +1,45 @@
+language: php
+
+php:
+  - 8.1
+
+branches:
+  only:
+    - main
+    - develop
+    - feature/.*
+    
+install:
+  - composer install
+  - curl -O https://files.acquia.com/cli/acli.phar
+  - chmod +x acli.phar
+  - sudo mv acli.phar /usr/local/bin/acli
+  - acli auth:login --key=${ACQUIA_KEY} --secret=${ACQUIA_SECRET}
+
+script:
+  - echo "Run tests or build steps"
+  - ./build-artifacts.sh
+
+after_success:
+  - |
+    echo "Deploying to Acquia"
+    acli remote:login mysite.dev
+    acli push:code --src=. --target-env=dev
+
+    if [ $? -eq 0 ]; then
+      echo "Deployment successful, pushing artifacts"
+      
+      BRANCH_NAME="artifacts/${TRAVIS_BRANCH}-$(date +%Y%m%d%H%M%S)"
+      git config --global user.name "Travis CI"
+      git config --global user.email "ci@travis"
+
+      git checkout -b "$BRANCH_NAME"
+      git add build/  # Adjust path as needed
+      git commit -m "Add built artifacts for ${TRAVIS_BRANCH}"
+      
+      git remote add deploy-origin https://${GITHUB_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git
+      git push deploy-origin "$BRANCH_NAME"
+    else
+      echo "Deployment failed. Artifacts not pushed."
+      exit 1
+    fi

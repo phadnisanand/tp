@@ -1,0 +1,9 @@
+SELECT nr.nid, nr.vid, nr.title, nr.uid, nr.created, pf.panelizer_view_mode
+FROM node_revision nr
+JOIN panelizer_entity_view_mode pf ON pf.entity_id = nr.nid AND pf.revision_id = nr.vid
+WHERE pf.panelizer_view_mode LIKE '%block_content%'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM block_content_field_data bfd
+    WHERE pf.panelizer_view_mode LIKE CONCAT('%', bfd.uuid, '%')
+  );
