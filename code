@@ -1,0 +1,79 @@
+Create a Custom Module: If you don't have one, create a small custom module (e.g., my_migration_fixes).
+Implement hook_update_N(): In your module's .install file (my_migration_fixes.install), create an update function.
+<?php
+
+use Drupal\node\Entity\Node;
+use Drupal\panelizer\Panelizer;
+
+/**
+ * @file
+ * Install, update and uninstall functions for the my_migration_fixes module.
+ */
+
+/**
+ * Removes a specific broken block from all Panelizer layouts for nodes.
+ */
+function my_migration_fixes_update_9001() {
+  $broken_block_id = 'some_broken_block_id'; // <--- CHANGE THIS
+  $message = '';
+
+  // Get the Panelizer storage service.
+  $panelizer = \Drupal::service('panelizer.storage');
+
+  // You may need to query for specific entity types and bundles.
+  // Here, we are targeting all nodes.
+  $nids = \Drupal::entityQuery('node')->execute();
+  $nodes = Node::loadMultiple($nids);
+
+  foreach ($nodes as $node) {
+    try {
+      // Get the panelizer display for the 'full' view mode.
+      // Change 'full' if your layouts are on a different view mode.
+      $display = $panelizer->load($node->getEntityTypeId(), $node->bundle(), 'full', $node->id());
+
+      if ($display) {
+        $sections = $display->getSections();
+        $was_modified = FALSE;
+        foreach ($sections as $section_index => $section) {
+          $components = $section->getComponents();
+          foreach ($components as $uuid => $component) {
+            if ($component->getPluginId() === $broken_block_id) {
+              // Found the broken block, remove it.
+              $section->removeComponent($uuid);
+              $was_modified = TRUE;
+              $message .= sprintf("Removed broken block '%s' from node %d.\n", $broken_block_id, $node->id());
+            }
+          }
+          // If we removed a component, we need to update the section in the display.
+          if ($was_modified) {
+              $display->setSection($section_index, $section);
+          }
+        }
+
+        // If we made changes, save the panelizer display back.
+        if ($was_modified) {
+          $panelizer->save($display, $node->getEntityTypeId(), $node->bundle(), 'full', $node->id());
+        }
+      }
+    } catch (\Exception $e) {
+      // Log any errors encountered while trying to fix a node.
+      $message .= sprintf("Error processing node %d: %s\n", $node->id(), $e->getMessage());
+    }
+  }
+
+  return $message;
+}
+
+
+Open the file: my_migration_fixes/my_migration_fixes.install.
+Find the following line (around line 18):
+Generated php
+$broken_block_id = 'some_broken_block_id'; // <--- CHANGE THIS
+Use code with caution.
+PHP
+Change 'some_broken_block_id' to the actual ID of the broken block you found in your Drupal logs.
+For example: If your log error says PluginNotFoundException: The "my_old_module_block" plugin does not exist, you would change the line to:
+Generated php
+$broken_block_id = 'my_old_module_block';
+
+(Optional) Check the View Mode: The script defaults to fixing layouts on the 'full' view mode. If your Panelizer layouts are on a different view mode (like 'default' or a custom one), you will need to change it in the two places it appears in the .install file.
