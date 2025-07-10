@@ -1,0 +1,100 @@
+Drupal Panelizer Cleanup Script (SQL + PHP + Drush)
+🔸 Step 1: SQL Query — Identify Revisions Referencing Broken Blocks
+
+SELECT pe.entity_id, pe.revision_id, pd.configuration
+FROM panelizer_entity pe
+JOIN panels_display pd ON pe.did = pd.did
+WHERE pd.configuration LIKE '%b443ae9f-c0af-45a3-a9a2-c7edb1e97901%'
+   OR pd.configuration LIKE '%b443ae9f-c0af-45a3-a9a2-c7edb1e97902%'
+   OR pd.configuration LIKE '%b443ae9f-c0af-45a3-a9a2-c7edb1e97903%'
+   OR pd.configuration LIKE '%b443ae9f-c0af-45a3-a9a2-c7edb1e97904%';
+
+यह query उन revisions को दिखाएगी जिनमें आपके दिए गए UUIDs referenced हैं।
+
+
+Step 2: PHP Script — Remove Broken Block References Programmatically
+<?php
+use Drupal\Core\Database\Database;
+use Drupal\Core\Config\ConfigFactoryInterface;
+
+$broken_uuids = [
+  'b443ae9f-c0af-45a3-a9a2-c7edb1e97901',
+  'b443ae9f-c0af-45a3-a9a2-c7edb1e97902',
+  'b443ae9f-c0af-45a3-a9a2-c7edb1e97903',
+  'b443ae9f-c0af-45a3-a9a2-c7edb1e97904',
+];
+
+foreach ($broken_uuids as $uuid) {
+  $blocks = \Drupal::entityTypeManager()
+    ->getStorage('block_content')
+    ->loadByProperties(['uuid' => $uuid]);
+
+  if (empty($blocks)) {
+    echo "❌ Missing block: $uuid\n";
+    // Delete config reference
+    \Drupal::configFactory()->getEditable("block.block.$uuid")->delete();
+    \Drupal::configFactory()->getEditable("layout_builder.layout.$uuid")->delete();
+  } else {
+    echo "✅ Block exists: $uuid\n";
+  }
+}
+
+
+Step 3: Optional — Delete Orphaned Panelizer Revisions
+DELETE FROM panelizer_entity
+WHERE did NOT IN (
+  SELECT did FROM panelizer_defaults
+);
+
+step 4) drush cr
+
+
+----------------------------------------------------------------------------------------------
+#!/bin/bash
+
+echo "🔍 Starting Drupal Panelizer revision cleanup..."
+
+# Define broken block UUIDs
+broken_uuids=(
+  "b443ae9f-c0af-45a3-a9a2-c7edb1e97901"
+  "b443ae9f-c0af-45a3-a9a2-c7edb1e97902"
+  "b443ae9f-c0af-45a3-a9a2-c7edb1e97903"
+  "b443ae9f-c0af-45a3-a9a2-c7edb1e97904"
+)
+
+# Step 1: Remove config and layout references for broken blocks
+for uuid in "${broken_uuids[@]}"
+do
+  echo "🧼 Cleaning block UUID: $uuid"
+  drush config:delete "block.block.$uuid"
+  drush config:delete "layout_builder.layout.$uuid"
+done
+
+# Step 2: Delete orphaned panelizer revisions from database
+echo "🗑️ Removing orphaned panelizer revisions..."
+drush sqlq "DELETE FROM panelizer_entity WHERE did NOT IN (SELECT did FROM panelizer_defaults);"
+
+# Step 3: Clear Drupal cache
+echo "♻️ Clearing Drupal cache..."
+drush cr
+
+echo "✅ Cleanup complete!"
+
+chmod +x cleanup_panelizer.sh
+./cleanup_panelizer.sh
+
+Option 1: Recreate Missing Blocks
+आप manually इन UUIDs के साथ dummy blocks create कर सकते हैं ताकि migration smooth हो जाए।
+
+✅ Option 2: Remove Affected Revisions
+उन revisions को database से delete करें जिनमें ये blocks referenced हैं।
+
+इससे migration आगे बढ़ सकता है बिना error के।
+
+✅ Option 3: Patch या Script का उपयोग करें
+Drupal community ने इस issue को fix करने के लिए कुछ patches और cleanup strategies suggest की हैं।
+
+आप custom script बना सकते हैं जो revisions को scan करके broken UUIDs को remove या replace कर दे।
+
+
+
